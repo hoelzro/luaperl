@@ -13,7 +13,7 @@ static void *dummy_handle = NULL;
 static PerlInterpreter *my_perl;
 
 /********************************* Utilities **********************************/
-void push_sv(lua_State *L, SV *sv)
+static void push_sv(lua_State *L, SV *sv)
 {
     if(! SvOK(sv)) {
 	lua_pushnil(L);
