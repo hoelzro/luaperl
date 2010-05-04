@@ -5,6 +5,11 @@
 #include <lauxlib.h>
 #include <lualib.h>
 
+#ifdef LUA_DL_DLOPEN
+# include <dlfcn.h>
+static void *dummy_handle = NULL;
+#endif
+
 static PerlInterpreter *my_perl;
 
 /********************************* Utilities **********************************/
@@ -83,10 +88,24 @@ static void xs_init(pTHX)
     newXS("DynaLoader::boot_DynaLoader", boot_DynaLoader, file);
 }
 
+#ifdef LUA_DL_DLOPEN
+static void load_dummy(lua_State *L)
+{
+    dummy_handle = dlopen("./luaperl_dummy.so", RTLD_NOW | RTLD_GLOBAL);
+    if(! dummy_handle) {
+	luaL_error(L, "Unable to find luaperl_dummy.so!");
+    }
+}
+#else
+# define load_dummy(L)
+#endif
+
 int luaopen_perl(lua_State *L)
 {
     int fake_argc = 3;
     char *fake_argv[] = { "", "-e", "0" };
+
+    load_dummy(L);
 
     lua_newuserdata(L, 0);
 
