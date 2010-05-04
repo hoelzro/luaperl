@@ -81,11 +81,17 @@ static luaL_Reg perl_interpreter_methods[] = {
 
 EXTERN_C void boot_DynaLoader(pTHX_ CV* cv);
 
+static void boot_threads(pTHX_ CV* cv)
+{
+    croak("Unable to load threads when embedded in Lua!");
+}
+
 static void xs_init(pTHX)
 {
     char *file = __FILE__;
 
     newXS("DynaLoader::boot_DynaLoader", boot_DynaLoader, file);
+    newXS("threads::bootstrap", boot_threads, file);
 }
 
 #ifdef LUA_DL_DLOPEN
