@@ -89,10 +89,44 @@ static void xs_init(pTHX)
 }
 
 #ifdef LUA_DL_DLOPEN
+static int try_load(lua_State *L, const char *path)
+{
+    if(! strstr(path, LUA_PATH_MARK)) {
+	return 0;
+    }
+    path = luaL_gsub(L, path, LUA_PATH_MARK, "luaperl_dummy");
+    dummy_handle = dlopen(path, RTLD_NOW | RTLD_GLOBAL);
+    lua_pop(L, 1);
+    return dummy_handle ? 1 : 0;
+}
+
 static void load_dummy(lua_State *L)
 {
-    dummy_handle = dlopen("./luaperl_dummy.so", RTLD_NOW | RTLD_GLOBAL);
-    if(! dummy_handle) {
+    const char *package_cpath = NULL;
+    const char *path = NULL;
+    char *saveptr = NULL;
+    int loaded = 0;
+
+    lua_getglobal(L, "package");
+    if(lua_isnil(L, -1)) {
+	luaL_error(L, "Unable to find package in global scope!");
+    }
+    lua_getfield(L, -1, "cpath");
+    if(lua_isnil(L, -1)) {
+	luaL_error(L, "Unable to find cpath under package!");
+    }
+
+    package_cpath = luaL_checkstring(L, -1);
+    lua_pop(L, 2);
+    path = strtok_r(package_cpath, LUA_PATHSEP, &saveptr);
+    loaded = try_load(L, path);
+    while(! loaded && (path = strtok_r(NULL, LUA_PATHSEP, &saveptr))) {
+	loaded = try_load(L, path);
+	if(loaded) {
+	    break;
+	}
+    }
+    if(! loaded) {
 	luaL_error(L, "Unable to find luaperl_dummy.so!");
     }
 }
