@@ -28,6 +28,25 @@ void push_sv(lua_State *L, SV *sv)
     }
 }
 
+/* If throw is true, the error will be throwing using lua_error.
+ * If throw is false, nil will be pushed onto the stack, then the error.
+ */
+static int check_perl_error(lua_State *L, int throw)
+{
+    SV *errsv = get_sv("@", GV_ADD);
+    if(SvOK(errsv) && SvCUR(errsv)) {
+	if(! throw) {
+	    lua_pushnil(L);
+	}
+	push_sv(L, errsv);
+	if(throw) {
+	    return lua_error(L);
+	}
+	return 1;
+    }
+    return 0;
+}
+
 /******************************** Metamethods *********************************/
 static int perl_interp_gc(lua_State *L)
 {
@@ -56,20 +75,16 @@ static luaL_Reg perl_interpreter_mmethods[] = {
 /********************************** Methods ***********************************/
 static int perl_interp_eval(lua_State *L)
 {
-    SV *sv, *errsv;
+    SV *sv;
+    const char *error = NULL;
     const char *perl = luaL_checkstring(L, 1);
 
     sv = eval_pv(perl, 0);
-    errsv = get_sv("@", GV_ADD);
-    if(SvOK(errsv) && SvCUR(errsv)) {
-	lua_pushnil(L);
-	push_sv(L, errsv);
-
-	return 2;
-    } else {
+    if(! check_perl_error(L, 0)) {
 	push_sv(L, sv);
 	return 1;
     }
+    return 2;
 }
 
 static luaL_Reg perl_interpreter_methods[] = {
