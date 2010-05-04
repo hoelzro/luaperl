@@ -74,6 +74,15 @@ static luaL_Reg perl_interpreter_methods[] = {
 
 /*************************** Module Initialization ****************************/
 
+EXTERN_C void boot_DynaLoader(pTHX_ CV* cv);
+
+static void xs_init(pTHX)
+{
+    char *file = __FILE__;
+
+    newXS("DynaLoader::boot_DynaLoader", boot_DynaLoader, file);
+}
+
 int luaopen_perl(lua_State *L)
 {
     int fake_argc = 3;
@@ -84,7 +93,7 @@ int luaopen_perl(lua_State *L)
     PERL_SYS_INIT(&fake_argc, &fake_argv);
     my_perl = perl_alloc();
     perl_construct(my_perl);
-    perl_parse(my_perl, NULL, fake_argc, fake_argv, NULL);
+    perl_parse(my_perl, xs_init, fake_argc, fake_argv, NULL);
 
     luaL_newmetatable(L, "PerlInterpreter");
     luaL_register(L, NULL, perl_interpreter_mmethods);
